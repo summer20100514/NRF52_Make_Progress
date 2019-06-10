@@ -47,8 +47,8 @@ void rotary_encoder_pin_a_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_
     uint32_t level;
 
     level = nrf_gpio_pin_read(ROTARY_ENCODER_PIN_B);
-    NRF_LOG_RAW_INFO("A-0 B-%d\r\n", level);
-    // A-0 B-0 clockwise A-0 B-1 counterclockwise
+    // NRF_LOG_RAW_INFO("A-0 B-%d\r\n", level);
+    /* A-0 B-0 clockwise A-0 B-1 counterclockwise */
     if (level == 0) {
         direction = 1;
     } else {
@@ -107,18 +107,18 @@ void rotary_encoder_init(void)
     }
 
     nrf_drv_gpiote_in_config_t in_config_key = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
-    in_config_key.pull = NRF_GPIO_PIN_PULLUP;
+    in_config_key.pull = NRF_GPIO_PIN_NOPULL;
     err_code = nrf_drv_gpiote_in_init(ROTARY_ENCODER_PIN_KEY, &in_config_key, rotary_encoder_pin_key_handler);
     APP_ERROR_CHECK(err_code);
     nrf_drv_gpiote_in_event_enable(ROTARY_ENCODER_PIN_KEY, true);
 
     nrf_drv_gpiote_in_config_t in_config_a = GPIOTE_CONFIG_IN_SENSE_HITOLO(true);
-    in_config_a.pull = NRF_GPIO_PIN_PULLUP;
+    in_config_a.pull = NRF_GPIO_PIN_NOPULL;
     err_code = nrf_drv_gpiote_in_init(ROTARY_ENCODER_PIN_A, &in_config_a, rotary_encoder_pin_a_handler);
     APP_ERROR_CHECK(err_code);
     nrf_drv_gpiote_in_event_enable(ROTARY_ENCODER_PIN_A, true);
 
-    nrf_gpio_cfg_input(ROTARY_ENCODER_PIN_B, NRF_GPIO_PIN_PULLUP);
+    nrf_gpio_cfg_input(ROTARY_ENCODER_PIN_B, NRF_GPIO_PIN_NOPULL);
 
     err_code = app_timer_create(&m_key_pressed_timer_id,
                             APP_TIMER_MODE_SINGLE_SHOT,

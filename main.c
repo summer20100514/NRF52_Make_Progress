@@ -790,7 +790,7 @@ int main(void)
     timers_init();
     // buttons_leds_init(&erase_bonds);
     rotary_encoder_init();
-    //spi_and_gpio_init();
+    spi_and_gpio_init();
 
     power_management_init();
     ble_stack_init();
@@ -803,26 +803,28 @@ int main(void)
     peer_manager_init();
 
     // Start execution.
-    NRF_LOG_INFO("example started.");
+    NRF_LOG_INFO("example started %s", __TIME__);
     application_timers_start();
     advertising_start(erase_bonds);
 
-//    if(EPD_Init(lut_full_update) != 0) {
-//        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-//    }
-//    EPD_Clear();
-//    DEV_Delay_ms(500);
+    if(EPD_Init(lut_full_update) != 0) {
+        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+    }
+    EPD_Clear();
+    DEV_Delay_ms(500);
 
     //Create a new image cache
     //UBYTE *BlackImage;
     UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
     UBYTE BlackImage[Imagesize];
+
 /*
     if((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL) {
         NRF_LOG_RAW_INFO("Failed to apply for black memory...\r\n");
         return -1;
     }
     */
+
     NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
     Paint_NewImage(BlackImage, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
 		

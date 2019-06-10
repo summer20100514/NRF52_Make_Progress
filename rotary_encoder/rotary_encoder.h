@@ -22,7 +22,7 @@ enum {
 #define PULSE_CNT_THRESHOLD       2
 
 #define KEY_PRESS_SHORT_TIMEOUT   60
-#define KEY_PRESS_LONG_TIMEOUT    1000
+#define KEY_PRESS_LONG_TIMEOUT    600
 
 void rotary_encoder_init(void);
 int get_rotary_encoder_state(void);
