@@ -777,77 +777,47 @@ static void idle_state_handle(void)
     }
 }
 
-
-/**@brief Function for application main entry.
- */
-int main(void)
+static void EPD_Display_Test(void)
 {
-    bool erase_bonds;
-    int key_value, rotary_state;
+    UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
+    UBYTE ImageCache[Imagesize];
 
-    // Initialize.
-    log_init();
-    timers_init();
-    // buttons_leds_init(&erase_bonds);
-    rotary_encoder_init();
-    spi_and_gpio_init();
-
-    power_management_init();
-    ble_stack_init();
-    gap_params_init();
-    gatt_init();
-    advertising_init();
-    services_init();
-    sensor_simulator_init();
-    conn_params_init();
-    peer_manager_init();
-
-    // Start execution.
-    NRF_LOG_INFO("example started %s", __TIME__);
-    application_timers_start();
-    advertising_start(erase_bonds);
-
+    #if 0
     if(EPD_Init(lut_full_update) != 0) {
         NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
     }
     EPD_Clear();
-    DEV_Delay_ms(500);
+    DEV_Delay_ms(400);
 
-    //Create a new image cache
-    //UBYTE *BlackImage;
-    UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
-    UBYTE BlackImage[Imagesize];
-
-/*
-    if((BlackImage = (UBYTE *)malloc(Imagesize)) == NULL) {
-        NRF_LOG_RAW_INFO("Failed to apply for black memory...\r\n");
-        return -1;
-    }
-    */
-
-    NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
-    Paint_NewImage(BlackImage, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-		
-#if 0
+    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
+    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
     /*show image for array*/
     NRF_LOG_RAW_INFO("show image for array\r\n");
-    Paint_SelectImage(BlackImage);
+    Paint_SelectImage(ImageCache);
     Paint_Clear(WHITE);
+
     Paint_DrawBitMap(gImage_2in9);
-    
-    EPD_Display(BlackImage);
-    DEV_Delay_ms(500);
+    EPD_Display(ImageCache);
+    DEV_Delay_ms(400);
 #endif
 
 #if 0
+    if(EPD_Init(lut_full_update) != 0) {
+        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+    }
+    EPD_Clear();
+    DEV_Delay_ms(400);
+
+    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
+    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
     // Drawing on the image
     //1.Select Image
-    NRF_LOG_RAW_INFO("SelectImage:BlackImage\r\n");
-    Paint_SelectImage(BlackImage);
+    NRF_LOG_RAW_INFO("SelectImage:ImageCache\r\n");
+    Paint_SelectImage(ImageCache);
     Paint_Clear(WHITE);
 
     // 2.Drawing on the image
-    NRF_LOG_RAW_INFO("Drawing:BlackImage\r\n");
+    NRF_LOG_RAW_INFO("Drawing:ImageCache\r\n");
     Paint_DrawPoint(10, 80, BLACK, DOT_PIXEL_1X1, DOT_STYLE_DFT);
     Paint_DrawPoint(10, 90, BLACK, DOT_PIXEL_2X2, DOT_STYLE_DFT);
     Paint_DrawPoint(10, 100, BLACK, DOT_PIXEL_3X3, DOT_STYLE_DFT);
@@ -867,8 +837,8 @@ int main(void)
     Paint_DrawString_CN(130, 20,"Œ¢»Ì", &Font24CN, WHITE, BLACK);
 
     NRF_LOG_RAW_INFO("EPD_Display\r\n");
-    EPD_Display(BlackImage);
-    DEV_Delay_ms(500);
+    EPD_Display(ImageCache);
+    DEV_Delay_ms(400);
 #endif
 
 #if 0
@@ -876,8 +846,13 @@ int main(void)
     if(EPD_Init(lut_partial_update) != 0) {
         NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
     }
+    EPD_Clear();
+    DEV_Delay_ms(400);
 
-    Paint_SelectImage(BlackImage);
+    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
+    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
+    Paint_SelectImage(ImageCache);
+    Paint_Clear(WHITE);
 
     Paint_DrawRectangle(0, 0, 120, 40, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
     PAINT_TIME sPaint_time;
@@ -902,11 +877,64 @@ int main(void)
         Paint_ClearWindows(15, 65, 15 + Font20.Width * 7, 65 + Font20.Height, WHITE);
         Paint_DrawTime(15, 65, &sPaint_time, &Font20, WHITE, BLACK);
 
-	EPD_Display(BlackImage);
+	EPD_Display(ImageCache);
         DEV_Delay_ms(500);//Analog clock 1s
     }
-
 #endif
+}
+
+
+/**@brief Function for application main entry.
+ */
+int main(void)
+{
+    bool erase_bonds;
+    int key_value, rotary_state;
+    // Create a new image cache
+    UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
+    UBYTE ImageCache[Imagesize];
+
+    // Initialize.
+    log_init();
+    timers_init();
+    // buttons_leds_init(&erase_bonds);
+    rotary_encoder_init();
+    spi_and_gpio_init();
+
+    power_management_init();
+    ble_stack_init();
+    gap_params_init();
+    gatt_init();
+    advertising_init();
+    services_init();
+    sensor_simulator_init();
+    conn_params_init();
+    peer_manager_init();
+
+    // Start execution.
+    NRF_LOG_INFO("compiled at %s %s", __DATE__, __TIME__);
+    application_timers_start();
+    advertising_start(erase_bonds);
+    // EPD_Display_Test();
+
+    //Partial refresh, example shows time    
+    if(EPD_Init(lut_partial_update) != 0) {
+        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+    }
+    EPD_Clear();
+    DEV_Delay_ms(400);
+    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
+    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
+    Paint_SelectImage(ImageCache);
+    Paint_Clear(WHITE);
+
+    Paint_DrawCircle(30, 75, 14, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    Paint_DrawCircle(266, 75, 14, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    Paint_DrawRectangle(30, 60, 266, 90, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    PAINT_TIME sPaint_time;
+    sPaint_time.Hour = 12;
+    sPaint_time.Min = 34;
+    sPaint_time.Sec = 56;
 
     // Enter main loop.
     for (;;)
@@ -922,6 +950,24 @@ int main(void)
         if (rotary_state != ROTARY_STATE_INVALID) {
             NRF_LOG_RAW_INFO("rotary: %d\r\n", rotary_state);
         }
+
+        sPaint_time.Sec = sPaint_time.Sec + 1;
+        if (sPaint_time.Sec == 60) {
+            sPaint_time.Min = sPaint_time.Min + 1;
+            sPaint_time.Sec = 0;
+            if (sPaint_time.Min == 60) {
+                sPaint_time.Hour =  sPaint_time.Hour + 1;
+                sPaint_time.Min = 0;
+                if (sPaint_time.Hour == 24) {
+                    sPaint_time.Hour = 0;
+                    sPaint_time.Min = 0;
+                    sPaint_time.Sec = 0;
+                }
+            }
+        }
+        Paint_ClearWindows(100, 25, 100 + Font20.Width * 7, 25 + Font20.Height, WHITE);
+        Paint_DrawTime(100, 25, &sPaint_time, &Font20, WHITE, BLACK);
+	EPD_Display(ImageCache);
     }
 }
 
