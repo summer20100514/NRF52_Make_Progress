@@ -185,7 +185,7 @@
     </folder>
     <configuration
       Name="Release"
-      c_user_include_directories="../../../rotary_encoder;../../../Config;../../../e-Paper;../../../Fonts;../../../GUI" />
+      c_user_include_directories="../../../rotary_encoder;../../../Config;../../../e-Paper;../../../Fonts;../../../GUI;../../../Time-Timer" />
     <folder Name="rotary_encoder">
       <file file_name="../../../rotary_encoder/rotary_encoder.c" />
     </folder>
@@ -208,6 +208,9 @@
     </folder>
     <folder Name="GUI">
       <file file_name="../../../GUI/GUI_Paint.c" />
+    </folder>
+    <folder Name="Time_Timer">
+      <file file_name="../../../Time-Timer/time_timer.c" />
     </folder>
   </project>
   <configuration

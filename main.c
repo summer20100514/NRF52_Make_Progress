@@ -87,6 +87,8 @@
 #include "GUI_Paint.h"
 #include "imagedata.h"
 
+#include "time_timer.h"
+
 #define DEVICE_NAME                         "MakeProgress"                            /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME                   "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                    500                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
@@ -140,6 +142,9 @@ static ble_uuid_t m_adv_uuids[] =                                   /**< Univers
     {BLE_UUID_BATTERY_SERVICE,              BLE_UUID_TYPE_BLE},
     {BLE_UUID_DEVICE_INFORMATION_SERVICE,   BLE_UUID_TYPE_BLE}
 };
+
+//static UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
+static UBYTE ImageCache[EPD_WIDTH/8*EPD_HEIGHT];
 
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -779,9 +784,6 @@ static void idle_state_handle(void)
 
 static void EPD_Display_Test(void)
 {
-    UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
-    UBYTE ImageCache[Imagesize];
-
     #if 0
     if(EPD_Init(lut_full_update) != 0) {
         NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
@@ -881,18 +883,85 @@ static void EPD_Display_Test(void)
         DEV_Delay_ms(500);//Analog clock 1s
     }
 #endif
+
+#if 0
+    //Partial refresh
+    if(EPD_Init(lut_partial_update) != 0) {
+        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+    }
+    
+    EPD_Clear();
+    DEV_Delay_ms(400);
+    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
+    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
+    Paint_SelectImage(ImageCache);
+    Paint_Clear(WHITE);
+
+    Paint_DrawCircle(30, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
+    Paint_DrawCircle(266, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
+    Paint_DrawLine(30, 60, 266, 60, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
+    Paint_DrawLine(30, 90, 266, 90, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
+    
+    Paint_DrawCircle(31, 75, 14, WHITE, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    Paint_DrawCircle(265, 75, 14, WHITE, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    Paint_ClearWindows(30, 60, 45, 89, WHITE);
+    Paint_ClearWindows(251, 60, 266, 89, WHITE);
+
+    NRF_LOG_RAW_INFO("EPD_Display\r\n");
+    EPD_Display(ImageCache);
+    DEV_Delay_ms(400);
+#endif
 }
 
+static void add_outline_overlay(UBYTE *image, uint16_t array_len)
+{
+    for (uint16_t i = 0; i < array_len; i++) {
+        if (gBar_Outline[i] != 0xFF) {
+            image[i] &= gBar_Outline[i];
+        }
+    }
+}
+
+static void update_progressbar(uint8_t percent)
+{
+/*  The progress bar is limited by two circles(arcs)
+    Paint_DrawCircle(30, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
+    Paint_DrawCircle(266, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
+    */
+
+#define ARC_RADIUS              15
+#define PROGRESSBAR_START       (30-ARC_RADIUS)
+#define PROGRESSBAR_END         (266+ARC_RADIUS)
+#define PROGRESSBAR_LEN         (PROGRESSBAR_END-PROGRESSBAR_START)
+#define LEFT_HALF_ARC_CENTER    (PROGRESSBAR_START+ARC_RADIUS)
+#define RIGHT_HALF_ARC_CENTER   (PROGRESSBAR_START+PROGRESSBAR_LEN-ARC_RADIUS)
+
+    uint16_t filled_len;
+    filled_len = (uint16_t)((float)percent/100*PROGRESSBAR_LEN);
+    
+    Paint_ClearWindows(PROGRESSBAR_START, 60, PROGRESSBAR_END, 89, WHITE);
+    Paint_DrawCircle(30, 75, ARC_RADIUS, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    if (filled_len <= ARC_RADIUS) {
+        Paint_ClearWindows(LEFT_HALF_ARC_CENTER-(ARC_RADIUS-filled_len), 60, LEFT_HALF_ARC_CENTER+ARC_RADIUS, 89, WHITE);
+    } else if (filled_len >= (PROGRESSBAR_LEN-ARC_RADIUS)) {
+        if (filled_len > PROGRESSBAR_LEN) filled_len = PROGRESSBAR_LEN;
+        Paint_DrawRectangle(30, 60, RIGHT_HALF_ARC_CENTER, 90, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+        Paint_DrawCircle(266, 75, ARC_RADIUS, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+        Paint_ClearWindows(RIGHT_HALF_ARC_CENTER+(filled_len-(PROGRESSBAR_LEN-ARC_RADIUS)), 60, RIGHT_HALF_ARC_CENTER+ARC_RADIUS, 89, WHITE);
+    } else {
+        Paint_ClearWindows(LEFT_HALF_ARC_CENTER, 60, LEFT_HALF_ARC_CENTER+ARC_RADIUS, 89, WHITE);
+        Paint_DrawRectangle(30, 60, LEFT_HALF_ARC_CENTER+(filled_len-ARC_RADIUS), 90, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
+    }
+    add_outline_overlay(ImageCache, sizeof(ImageCache));
+}
 
 /**@brief Function for application main entry.
  */
 int main(void)
 {
     bool erase_bonds;
+    uint8_t progress = 0;
     int key_value, rotary_state;
-    // Create a new image cache
-    UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
-    UBYTE ImageCache[Imagesize];
 
     // Initialize.
     log_init();
@@ -900,6 +969,7 @@ int main(void)
     // buttons_leds_init(&erase_bonds);
     rotary_encoder_init();
     spi_and_gpio_init();
+    time_timer_init();
 
     power_management_init();
     ble_stack_init();
@@ -915,26 +985,24 @@ int main(void)
     NRF_LOG_INFO("compiled at %s %s", __DATE__, __TIME__);
     application_timers_start();
     advertising_start(erase_bonds);
-    // EPD_Display_Test();
 
-    //Partial refresh, example shows time    
+//    if(EPD_Init(lut_full_update) != 0) {
+//        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+//    }
+
+    //Partial refresh
     if(EPD_Init(lut_partial_update) != 0) {
         NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
     }
     EPD_Clear();
     DEV_Delay_ms(400);
-    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
+    
     Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
     Paint_SelectImage(ImageCache);
     Paint_Clear(WHITE);
 
-    Paint_DrawCircle(30, 75, 14, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    Paint_DrawCircle(266, 75, 14, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    Paint_DrawRectangle(30, 60, 266, 90, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    PAINT_TIME sPaint_time;
-    sPaint_time.Hour = 12;
-    sPaint_time.Min = 34;
-    sPaint_time.Sec = 56;
+    update_progressbar(0);
+    EPD_Display(ImageCache);
 
     // Enter main loop.
     for (;;)
@@ -948,26 +1016,14 @@ int main(void)
         }
 
         if (rotary_state != ROTARY_STATE_INVALID) {
+            progress+=10;
+            progress %= 101;
+            Paint_ClearWindows(50, 20, 100, 50, WHITE);
+            Paint_DrawNum(50, 20, progress, &Font16, WHITE, BLACK);
+            update_progressbar(progress);
+            EPD_Display(ImageCache);
             NRF_LOG_RAW_INFO("rotary: %d\r\n", rotary_state);
         }
-
-        sPaint_time.Sec = sPaint_time.Sec + 1;
-        if (sPaint_time.Sec == 60) {
-            sPaint_time.Min = sPaint_time.Min + 1;
-            sPaint_time.Sec = 0;
-            if (sPaint_time.Min == 60) {
-                sPaint_time.Hour =  sPaint_time.Hour + 1;
-                sPaint_time.Min = 0;
-                if (sPaint_time.Hour == 24) {
-                    sPaint_time.Hour = 0;
-                    sPaint_time.Min = 0;
-                    sPaint_time.Sec = 0;
-                }
-            }
-        }
-        Paint_ClearWindows(100, 25, 100 + Font20.Width * 7, 25 + Font20.Height, WHITE);
-        Paint_DrawTime(100, 25, &sPaint_time, &Font20, WHITE, BLACK);
-	EPD_Display(ImageCache);
     }
 }
 
