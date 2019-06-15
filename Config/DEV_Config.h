@@ -74,11 +74,16 @@
 #define EPD_MOSI_PIN    26
 #define EPD_CLK_PIN     28
 
+#define EPD_POWER_PIN   30
+
 /**
  * GPIO read and write
 **/
 #define DEV_Digital_Write(_pin, _value)  nrf_gpio_pin_write(_pin, _value) //HAL_GPIO_WritePin(_pin, _value == 0? GPIO_PIN_RESET:GPIO_PIN_SET)
 #define DEV_Digital_Read(_pin)  nrf_gpio_pin_read(_pin) //HAL_GPIO_ReadPin(_pin)
+
+#define EPD_POWER_ON()    nrf_gpio_pin_write(EPD_POWER_PIN, 0)
+#define EPD_POWER_OFF()   nrf_gpio_pin_write(EPD_POWER_PIN, 1)
 
 /**
  * delay x ms
@@ -86,5 +91,6 @@
 #define DEV_Delay_ms(__xms)   nrf_delay_ms(__xms) //HAL_Delay(__xms);
 
 void spi_and_gpio_init(void);
+void spi_and_gpio_uninit(void);
 void DEV_SPI_WriteByte(UBYTE value);
 #endif

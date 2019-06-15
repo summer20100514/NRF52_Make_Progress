@@ -41,6 +41,7 @@
 #define SPI_INSTANCE  0 /**< SPI instance index. */
 static const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);  /**< SPI instance. */
 static volatile bool spi_xfer_done;  /**< Flag used to indicate that SPI instance completed the transfer. */
+static volatile bool spi_initialized = false;
 
 /**
  * @brief SPI user event handler.
@@ -55,9 +56,13 @@ void spi_event_handler(nrf_drv_spi_evt_t const * p_event,
 
 void spi_and_gpio_init(void)
 {
+    // already initialized
+    if (spi_initialized) return; 
+
     nrf_gpio_cfg_input(EPD_BUSY_PIN, NRF_GPIO_PIN_NOPULL);
     //nrf_gpio_cfg_input(EPD_BUSY_PIN, NRF_GPIO_PIN_PULLUP);
     nrf_gpio_cfg_output(EPD_DC_PIN);
+    nrf_gpio_cfg_output(EPD_POWER_PIN);
 
     nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
     spi_config.ss_pin   = EPD_CS_PIN;
@@ -65,6 +70,23 @@ void spi_and_gpio_init(void)
     spi_config.mosi_pin = EPD_MOSI_PIN;
     spi_config.sck_pin  = EPD_CLK_PIN;
     APP_ERROR_CHECK(nrf_drv_spi_init(&spi, &spi_config, spi_event_handler, NULL));
+
+    spi_initialized = true;
+}
+
+void spi_and_gpio_uninit(void)
+{
+    if (!spi_initialized) return;
+
+    nrf_drv_spi_uninit(&spi);
+
+    nrf_gpio_cfg_default(EPD_DC_PIN);
+    nrf_gpio_cfg_default(EPD_CS_PIN);
+    nrf_gpio_cfg_default(EPD_BUSY_PIN);
+    nrf_gpio_cfg_default(EPD_MOSI_PIN);
+    nrf_gpio_cfg_default(EPD_CLK_PIN);
+
+    spi_initialized = false;
 }
 
 //extern SPI_HandleTypeDef hspi1;

@@ -511,6 +511,38 @@ void Paint_DrawString_EN(UWORD Xstart, UWORD Ystart, const char * pString,
     }
 }
 
+void Paint_DrawString_EN_COMPACT(UWORD Xstart, UWORD Ystart, const char * pString,
+                         sFONT* Font, UWORD Color_Background, UWORD Color_Foreground )
+{
+    UWORD Xpoint = Xstart;
+    UWORD Ypoint = Ystart;
+
+    if (Xstart > Paint.Width || Ystart > Paint.Height) {
+        Debug("Paint_DrawString_EN Input exceeds the normal display range\r\n");
+        return;
+    }
+
+    while (* pString != '\0') {
+        //if X direction filled , reposition to(Xstart,Ypoint),Ypoint is Y direction plus the Height of the character
+        if ((Xpoint + Font->Width ) > Paint.Width ) {
+            Xpoint = Xstart;
+            Ypoint += Font->Height;
+        }
+
+        // If the Y direction is full, reposition to(Xstart, Ystart)
+        if ((Ypoint  + Font->Height ) > Paint.Height ) {
+            Xpoint = Xstart;
+            Ypoint = Ystart;
+        }
+        Paint_DrawChar(Xpoint, Ypoint, * pString, Font, Color_Background, Color_Foreground);
+
+        //The next character of the address
+        pString ++;
+
+        //The next word of the abscissa increases the font of the broadband
+        Xpoint += Font->Width-2;
+    }
+}
 
 /******************************************************************************
 function:	Display the string
@@ -638,6 +670,10 @@ void Paint_DrawNum(UWORD Xpoint, UWORD Ypoint, int32_t Nummber,
         Nummber /= 10;
     }
 
+    if (Num_Bit == 0) {
+        Str_Array[0] = '0';
+    }
+
     //The string is inverted
     while (Num_Bit > 0) {
         Str_Array[Str_Bit] = Num_Array[Num_Bit - 1];
@@ -647,6 +683,41 @@ void Paint_DrawNum(UWORD Xpoint, UWORD Ypoint, int32_t Nummber,
 
     //show
     Paint_DrawString_EN(Xpoint, Ypoint, (const char*)pStr, Font, Color_Background, Color_Foreground);
+}
+
+void Paint_DrawNum_COMPACT(UWORD Xpoint, UWORD Ypoint, int32_t Nummber,
+                   sFONT* Font, UWORD Color_Background, UWORD Color_Foreground )
+{
+
+    int16_t Num_Bit = 0, Str_Bit = 0;
+    uint8_t Str_Array[ARRAY_LEN] = {0}, Num_Array[ARRAY_LEN] = {0};
+    uint8_t *pStr = Str_Array;
+
+    if (Xpoint > Paint.Width || Ypoint > Paint.Height) {
+        Debug("Paint_DisNum Input exceeds the normal display range\r\n");
+        return;
+    }
+
+    //Converts a number to a string
+    while (Nummber) {
+        Num_Array[Num_Bit] = Nummber % 10 + '0';
+        Num_Bit++;
+        Nummber /= 10;
+    }
+
+    if (Num_Bit == 0) {
+        Str_Array[0] = '0';
+    }
+
+    //The string is inverted
+    while (Num_Bit > 0) {
+        Str_Array[Str_Bit] = Num_Array[Num_Bit - 1];
+        Str_Bit ++;
+        Num_Bit --;
+    }
+
+    //show
+    Paint_DrawString_EN_COMPACT(Xpoint, Ypoint, (const char*)pStr, Font, Color_Background, Color_Foreground);
 }
 
 /******************************************************************************

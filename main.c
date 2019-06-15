@@ -836,7 +836,7 @@ static void EPD_Display_Test(void)
     Paint_DrawNum(10, 33, 123456789, &Font12, BLACK, WHITE);
     Paint_DrawNum(10, 50, 987654321, &Font16, WHITE, BLACK);
     Paint_DrawString_CN(130, 0, "ÄãºÃ", &Font12CN, BLACK, WHITE);
-    Paint_DrawString_CN(130, 20,"Î¢Èí", &Font24CN, WHITE, BLACK);
+    Paint_DrawString_CN(130, 20,"Î¢Èí", &Font20CN, WHITE, BLACK);
 
     NRF_LOG_RAW_INFO("EPD_Display\r\n");
     EPD_Display(ImageCache);
@@ -922,7 +922,7 @@ static void add_outline_overlay(UBYTE *image, uint16_t array_len)
     }
 }
 
-static void update_progressbar(uint8_t percent)
+static void update_progressbar(uint16_t percent)
 {
 /*  The progress bar is limited by two circles(arcs)
     Paint_DrawCircle(30, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
@@ -955,12 +955,117 @@ static void update_progressbar(uint8_t percent)
     add_outline_overlay(ImageCache, sizeof(ImageCache));
 }
 
+static void show_time(UWORD Xstart, UWORD Ystart, sFONT* Font, uint16_t mins)
+{
+    uint8_t h, m;
+    uint16_t char_dist;
+
+    h = mins/60;
+    m = mins%60;
+    if (h > 99) h = 99;
+    char_dist = Font->Width-2;
+    Paint_ClearWindows(30, Ystart, 200, Ystart+34, WHITE);
+    if (h < 10) {
+        Paint_DrawNum_COMPACT(Xstart, Ystart, 0, Font, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(Xstart+char_dist, Ystart, h, Font, WHITE, BLACK); 
+    } else {
+        Paint_DrawNum_COMPACT(Xstart, Ystart, h, Font, WHITE, BLACK);
+    }
+    Paint_DrawChar(Xstart+char_dist*2, Ystart, ':', Font, WHITE, BLACK);
+    if (m < 10) {
+        Paint_DrawNum_COMPACT(Xstart+char_dist*3, Ystart, 0, Font, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(Xstart+char_dist*4, Ystart, m, Font, WHITE, BLACK); 
+    } else {
+        Paint_DrawNum_COMPACT(Xstart+char_dist*3, Ystart, m, Font, WHITE, BLACK);
+    }
+}
+
+#define PERCENT_NUMBER_OFFSET   160
+#define PIXEL_BETWEEN_CHARS     12
+static void show_progress_hm_time_with_power_down(uint16_t cur_mins, uint16_t set_mins)
+{
+    uint16_t percent, per;
+
+    spi_and_gpio_init();
+    EPD_POWER_ON();
+    DEV_Delay_ms(100);
+
+    percent = (uint16_t)((float)cur_mins*100/set_mins);
+
+    if(EPD_Init(lut_full_update) != 0) {
+        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+    }
+//    NRF_LOG_RAW_INFO("now full update!\r\n");
+    Paint_ClearWindows(20, 25, 280, 59, WHITE);
+
+    show_time(75, 25, &Font24, cur_mins);
+    if (percent < 10) {
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, percent, &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*2, 25, '%', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*3, 25, ')', &Font20, WHITE, BLACK);
+        per = percent;
+    } else if (percent < 100) {
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, percent, &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*3, 25, '%', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, ')', &Font20, WHITE, BLACK);
+        per = percent;
+    } else if (percent == 100) {
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, percent, &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, '%', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*5, 25, ')', &Font20, WHITE, BLACK);
+        per = percent;
+    } else if (percent < 110) {
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, '+', &Font20, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*2, 25, percent-100, &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*3, 25, '%', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, ')', &Font20, WHITE, BLACK);
+        per = 100;
+    } else if (percent < 200) {
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, '+', &Font20, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*2, 25, percent-100, &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, '%', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*5, 25, ')', &Font20, WHITE, BLACK);
+        per = 100;
+    } else {
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10, 25, '(', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS, 25, '+', &Font20, WHITE, BLACK);
+        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS*2, 25, percent-100, &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS*5, 25, '%', &Font20, WHITE, BLACK);
+        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS*6, 25, ')', &Font20, WHITE, BLACK);
+        per = 100;
+    }
+    update_progressbar(per);
+    show_time(118, 98, &Font20, set_mins);
+    EPD_Display(ImageCache);
+    DEV_Delay_ms(100);
+    spi_and_gpio_uninit();
+    EPD_POWER_OFF();    
+}
+
+static void show_settings_screen(void)
+{
+    EPD_POWER_ON(); // turn on VCC
+    if(EPD_Init(lut_full_update) != 0) {
+        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
+    }
+    EPD_Clear();
+    DEV_Delay_ms(100);
+    show_time(105, 25, &Font24, 0);
+    EPD_Display(ImageCache);
+}
+
 /**@brief Function for application main entry.
  */
 int main(void)
 {
     bool erase_bonds;
-    uint8_t progress = 0;
+    uint16_t cur_mins = 0, set_mins = 90;
+    uint32_t cur_time = 0, last_time = 0;
     int key_value, rotary_state;
 
     // Initialize.
@@ -986,12 +1091,7 @@ int main(void)
     application_timers_start();
     advertising_start(erase_bonds);
 
-//    if(EPD_Init(lut_full_update) != 0) {
-//        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-//    }
-
-    //Partial refresh
-    if(EPD_Init(lut_partial_update) != 0) {
+    if(EPD_Init(lut_full_update) != 0) {
         NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
     }
     EPD_Clear();
@@ -1001,9 +1101,8 @@ int main(void)
     Paint_SelectImage(ImageCache);
     Paint_Clear(WHITE);
 
-    update_progressbar(0);
+    show_time(105, 60, &Font24, 0);
     EPD_Display(ImageCache);
-
     // Enter main loop.
     for (;;)
     {
@@ -1015,14 +1114,18 @@ int main(void)
             NRF_LOG_RAW_INFO("key: %d\r\n", key_value);
         }
 
-        if (rotary_state != ROTARY_STATE_INVALID) {
-            progress+=10;
-            progress %= 101;
-            Paint_ClearWindows(50, 20, 100, 50, WHITE);
-            Paint_DrawNum(50, 20, progress, &Font16, WHITE, BLACK);
-            update_progressbar(progress);
-            EPD_Display(ImageCache);
-            NRF_LOG_RAW_INFO("rotary: %d\r\n", rotary_state);
+        //if (rotary_state != ROTARY_STATE_INVALID) 
+        
+        cur_time = get_time();
+        if (((cur_time+1) % 10) == 0 && (cur_time != last_time))
+        {
+            NRF_LOG_RAW_INFO("time: %d\r\n", get_time());
+            cur_mins += 5;
+
+            show_progress_hm_time_with_power_down(cur_mins, set_mins);
+            //NRF_LOG_RAW_INFO("progress: %d\r\n", progress);
+            
+            last_time = cur_time;
         }
     }
 }
