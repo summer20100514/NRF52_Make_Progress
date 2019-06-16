@@ -64,7 +64,6 @@
       <file file_name="../../../../../../components/libraries/atomic_fifo/nrf_atfifo.c" />
       <file file_name="../../../../../../components/libraries/atomic_flags/nrf_atflags.c" />
       <file file_name="../../../../../../components/libraries/atomic/nrf_atomic.c" />
-      <file file_name="../../../../../../components/libraries/balloc/nrf_balloc.c" />
       <file file_name="../../../../../../external/fprintf/nrf_fprintf.c" />
       <file file_name="../../../../../../external/fprintf/nrf_fprintf_format.c" />
       <file file_name="../../../../../../components/libraries/fstorage/nrf_fstorage.c" />
@@ -76,6 +75,7 @@
       <file file_name="../../../../../../components/libraries/experimental_section_vars/nrf_section_iter.c" />
       <file file_name="../../../../../../components/libraries/strerror/nrf_strerror.c" />
       <file file_name="../../../../../../components/libraries/sensorsim/sensorsim.c" />
+      <file file_name="../../../../../../components/libraries/balloc/nrf_balloc.c" />
     </folder>
     <folder Name="nRF_Drivers">
       <file file_name="../../../../../../integration/nrfx/legacy/nrf_drv_clock.c" />
@@ -185,7 +185,7 @@
     </folder>
     <configuration
       Name="Release"
-      c_user_include_directories="../../../rotary_encoder;../../../Config;../../../e-Paper;../../../Fonts;../../../GUI;../../../Time-Timer" />
+      c_user_include_directories="../../../rotary_encoder;../../../Config;../../../e-Paper;../../../Fonts;../../../GUI;../../../Time-Timer;../../../progress_gui" />
     <folder Name="rotary_encoder">
       <file file_name="../../../rotary_encoder/rotary_encoder.c" />
     </folder>
@@ -211,6 +211,9 @@
     </folder>
     <folder Name="Time_Timer">
       <file file_name="../../../Time-Timer/time_timer.c" />
+    </folder>
+    <folder Name="progress_gui">
+      <file file_name="../../../progress_gui/progress_gui.c" />
     </folder>
   </project>
   <configuration

@@ -81,13 +81,9 @@
 #include "nrf_log_default_backends.h"
 
 #include "rotary_encoder.h"
-
-#include "EPD_2in9.h"
-#include "DEV_Config.h"
-#include "GUI_Paint.h"
-#include "imagedata.h"
-
 #include "time_timer.h"
+#include "DEV_Config.h"
+#include "progress_gui.h"
 
 #define DEVICE_NAME                         "MakeProgress"                            /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME                   "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
@@ -125,11 +121,23 @@
 
 #define DEAD_BEEF                           0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+/* debug pin for logic analyzer */
+//#define ENABLE_DEBUG_PIN
+
+#if defined(ENABLE_DEBUG_PIN)
+#define DEBUG_PIN     31
+#define DEBUG_POINT_A()    {nrf_gpio_pin_write(DEBUG_PIN, 1); nrf_delay_us(50); nrf_gpio_pin_write(DEBUG_PIN, 0);}
+#define DEBUG_POINT_B()    {nrf_gpio_pin_write(DEBUG_PIN, 1); nrf_delay_us(50); nrf_gpio_pin_write(DEBUG_PIN, 0); nrf_delay_us(50); nrf_gpio_pin_write(DEBUG_PIN, 1); nrf_delay_us(50); nrf_gpio_pin_write(DEBUG_PIN, 0);}
+#endif
+
 BLE_BAS_DEF(m_bas);                                                 /**< Structure used to identify the battery service. */
 NRF_BLE_GATT_DEF(m_gatt);                                           /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                             /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                 /**< Advertising module instance. */
 APP_TIMER_DEF(m_battery_timer_id);                                  /**< Battery timer. */
+APP_TIMER_DEF(m_setting_timer_id);                               
+
+static bool setting_timer_expired = false;
 
 static uint16_t m_conn_handle         = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 static bool     m_rr_interval_enabled = true;                       /**< Flag for enabling and disabling the registration of new RR interval measurements (the purpose of disabling this is just to test sending HRM without RR interval data. */
@@ -142,10 +150,6 @@ static ble_uuid_t m_adv_uuids[] =                                   /**< Univers
     {BLE_UUID_BATTERY_SERVICE,              BLE_UUID_TYPE_BLE},
     {BLE_UUID_DEVICE_INFORMATION_SERVICE,   BLE_UUID_TYPE_BLE}
 };
-
-//static UWORD Imagesize = ((EPD_WIDTH % 8 == 0)? (EPD_WIDTH / 8 ): (EPD_WIDTH / 8 + 1)) * EPD_HEIGHT;
-static UBYTE ImageCache[EPD_WIDTH/8*EPD_HEIGHT];
-
 
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -782,299 +786,78 @@ static void idle_state_handle(void)
     }
 }
 
-static void EPD_Display_Test(void)
+static bool setting_timer_fired(void)
 {
-    #if 0
-    if(EPD_Init(lut_full_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-    EPD_Clear();
-    DEV_Delay_ms(400);
+    bool fired = false;
+    CRITICAL_REGION_ENTER();
+    fired = setting_timer_expired;
+    setting_timer_expired = false;
+    CRITICAL_REGION_EXIT();
 
-    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
-    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-    /*show image for array*/
-    NRF_LOG_RAW_INFO("show image for array\r\n");
-    Paint_SelectImage(ImageCache);
-    Paint_Clear(WHITE);
+    return fired;
+}
 
-    Paint_DrawBitMap(gImage_2in9);
-    EPD_Display(ImageCache);
-    DEV_Delay_ms(400);
+static void setting_timer_handler(void * p_context)
+{
+    UNUSED_PARAMETER(p_context);
+    // NRF_LOG_RAW_INFO("!\r\n");
+    setting_timer_expired = true;
+}
+
+static void setting_timer_init(void)
+{
+    ret_code_t err_code;
+    err_code = app_timer_create(&m_setting_timer_id,
+                            APP_TIMER_MODE_SINGLE_SHOT,
+                            setting_timer_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
+static void setting_timer_restart(uint32_t timeout_ticks)
+{
+    app_timer_stop(m_setting_timer_id);
+    app_timer_start(m_setting_timer_id, timeout_ticks, NULL);
+}
+
+static void setting_timer_stop(void)
+{
+    app_timer_stop(m_setting_timer_id);
+    (void)setting_timer_fired();
+}
+
+#if defined(ENABLE_DEBUG_PIN)
+static void debug_pin_init(void)
+{
+    nrf_gpio_cfg_output(DEBUG_PIN);
+    nrf_gpio_pin_write(DEBUG_PIN, 0);
+}
 #endif
 
-#if 0
-    if(EPD_Init(lut_full_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-    EPD_Clear();
-    DEV_Delay_ms(400);
-
-    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
-    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-    // Drawing on the image
-    //1.Select Image
-    NRF_LOG_RAW_INFO("SelectImage:ImageCache\r\n");
-    Paint_SelectImage(ImageCache);
-    Paint_Clear(WHITE);
-
-    // 2.Drawing on the image
-    NRF_LOG_RAW_INFO("Drawing:ImageCache\r\n");
-    Paint_DrawPoint(10, 80, BLACK, DOT_PIXEL_1X1, DOT_STYLE_DFT);
-    Paint_DrawPoint(10, 90, BLACK, DOT_PIXEL_2X2, DOT_STYLE_DFT);
-    Paint_DrawPoint(10, 100, BLACK, DOT_PIXEL_3X3, DOT_STYLE_DFT);
-    Paint_DrawLine(20, 70, 70, 120, BLACK, LINE_STYLE_SOLID, DOT_PIXEL_1X1);
-    Paint_DrawLine(70, 70, 20, 120, BLACK, LINE_STYLE_SOLID, DOT_PIXEL_1X1);    
-    Paint_DrawRectangle(20, 70, 70, 120, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    Paint_DrawRectangle(80, 70, 130, 120, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    Paint_DrawCircle(45, 95, 20, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    Paint_DrawCircle(105, 95, 20, WHITE, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    Paint_DrawLine(85, 95, 125, 95, BLACK, LINE_STYLE_DOTTED, DOT_PIXEL_1X1);
-    Paint_DrawLine(105, 75, 105, 115, BLACK, LINE_STYLE_DOTTED, DOT_PIXEL_1X1);
-    Paint_DrawString_EN(10, 0, "waveshare", &Font16, BLACK, WHITE);
-    Paint_DrawString_EN(10, 20, "hello world", &Font12, WHITE, BLACK);
-    Paint_DrawNum(10, 33, 123456789, &Font12, BLACK, WHITE);
-    Paint_DrawNum(10, 50, 987654321, &Font16, WHITE, BLACK);
-    Paint_DrawString_CN(130, 0, "ÄãºÃ", &Font12CN, BLACK, WHITE);
-    Paint_DrawString_CN(130, 20,"Î¢Èí", &Font20CN, WHITE, BLACK);
-
-    NRF_LOG_RAW_INFO("EPD_Display\r\n");
-    EPD_Display(ImageCache);
-    DEV_Delay_ms(400);
-#endif
-
-#if 0
-    //Partial refresh, example shows time    
-    if(EPD_Init(lut_partial_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-    EPD_Clear();
-    DEV_Delay_ms(400);
-
-    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
-    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-    Paint_SelectImage(ImageCache);
-    Paint_Clear(WHITE);
-
-    Paint_DrawRectangle(0, 0, 120, 40, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    PAINT_TIME sPaint_time;
-    sPaint_time.Hour = 12;
-    sPaint_time.Min = 34;
-    sPaint_time.Sec = 56;
-    for (;;) {
-        sPaint_time.Sec = sPaint_time.Sec + 1;
-        if (sPaint_time.Sec == 60) {
-            sPaint_time.Min = sPaint_time.Min + 1;
-            sPaint_time.Sec = 0;
-            if (sPaint_time.Min == 60) {
-                sPaint_time.Hour =  sPaint_time.Hour + 1;
-                sPaint_time.Min = 0;
-                if (sPaint_time.Hour == 24) {
-                    sPaint_time.Hour = 0;
-                    sPaint_time.Min = 0;
-                    sPaint_time.Sec = 0;
-                }
-            }
-        }
-        Paint_ClearWindows(15, 65, 15 + Font20.Width * 7, 65 + Font20.Height, WHITE);
-        Paint_DrawTime(15, 65, &sPaint_time, &Font20, WHITE, BLACK);
-
-	EPD_Display(ImageCache);
-        DEV_Delay_ms(500);//Analog clock 1s
-    }
-#endif
-
-#if 0
-    //Partial refresh
-    if(EPD_Init(lut_partial_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-    
-    EPD_Clear();
-    DEV_Delay_ms(400);
-    // NRF_LOG_RAW_INFO("Paint_NewImage\r\n");
-    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-    Paint_SelectImage(ImageCache);
-    Paint_Clear(WHITE);
-
-    Paint_DrawCircle(30, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    Paint_DrawCircle(266, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    Paint_DrawLine(30, 60, 266, 60, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    Paint_DrawLine(30, 90, 266, 90, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    
-    Paint_DrawCircle(31, 75, 14, WHITE, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    Paint_DrawCircle(265, 75, 14, WHITE, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    Paint_ClearWindows(30, 60, 45, 89, WHITE);
-    Paint_ClearWindows(251, 60, 266, 89, WHITE);
-
-    NRF_LOG_RAW_INFO("EPD_Display\r\n");
-    EPD_Display(ImageCache);
-    DEV_Delay_ms(400);
-#endif
-}
-
-static void add_outline_overlay(UBYTE *image, uint16_t array_len)
-{
-    for (uint16_t i = 0; i < array_len; i++) {
-        if (gBar_Outline[i] != 0xFF) {
-            image[i] &= gBar_Outline[i];
-        }
-    }
-}
-
-static void update_progressbar(uint16_t percent)
-{
-/*  The progress bar is limited by two circles(arcs)
-    Paint_DrawCircle(30, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    Paint_DrawCircle(266, 75, 15, BLACK, DRAW_FILL_EMPTY, DOT_PIXEL_1X1);
-    */
-
-#define ARC_RADIUS              15
-#define PROGRESSBAR_START       (30-ARC_RADIUS)
-#define PROGRESSBAR_END         (266+ARC_RADIUS)
-#define PROGRESSBAR_LEN         (PROGRESSBAR_END-PROGRESSBAR_START)
-#define LEFT_HALF_ARC_CENTER    (PROGRESSBAR_START+ARC_RADIUS)
-#define RIGHT_HALF_ARC_CENTER   (PROGRESSBAR_START+PROGRESSBAR_LEN-ARC_RADIUS)
-
-    uint16_t filled_len;
-    filled_len = (uint16_t)((float)percent/100*PROGRESSBAR_LEN);
-    
-    Paint_ClearWindows(PROGRESSBAR_START, 60, PROGRESSBAR_END, 89, WHITE);
-    Paint_DrawCircle(30, 75, ARC_RADIUS, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    if (filled_len <= ARC_RADIUS) {
-        Paint_ClearWindows(LEFT_HALF_ARC_CENTER-(ARC_RADIUS-filled_len), 60, LEFT_HALF_ARC_CENTER+ARC_RADIUS, 89, WHITE);
-    } else if (filled_len >= (PROGRESSBAR_LEN-ARC_RADIUS)) {
-        if (filled_len > PROGRESSBAR_LEN) filled_len = PROGRESSBAR_LEN;
-        Paint_DrawRectangle(30, 60, RIGHT_HALF_ARC_CENTER, 90, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-        Paint_DrawCircle(266, 75, ARC_RADIUS, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-        Paint_ClearWindows(RIGHT_HALF_ARC_CENTER+(filled_len-(PROGRESSBAR_LEN-ARC_RADIUS)), 60, RIGHT_HALF_ARC_CENTER+ARC_RADIUS, 89, WHITE);
-    } else {
-        Paint_ClearWindows(LEFT_HALF_ARC_CENTER, 60, LEFT_HALF_ARC_CENTER+ARC_RADIUS, 89, WHITE);
-        Paint_DrawRectangle(30, 60, LEFT_HALF_ARC_CENTER+(filled_len-ARC_RADIUS), 90, BLACK, DRAW_FILL_FULL, DOT_PIXEL_1X1);
-    }
-    add_outline_overlay(ImageCache, sizeof(ImageCache));
-}
-
-static void show_time(UWORD Xstart, UWORD Ystart, sFONT* Font, uint16_t mins)
-{
-    uint8_t h, m;
-    uint16_t char_dist;
-
-    h = mins/60;
-    m = mins%60;
-    if (h > 99) h = 99;
-    char_dist = Font->Width-2;
-    Paint_ClearWindows(30, Ystart, 200, Ystart+34, WHITE);
-    if (h < 10) {
-        Paint_DrawNum_COMPACT(Xstart, Ystart, 0, Font, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(Xstart+char_dist, Ystart, h, Font, WHITE, BLACK); 
-    } else {
-        Paint_DrawNum_COMPACT(Xstart, Ystart, h, Font, WHITE, BLACK);
-    }
-    Paint_DrawChar(Xstart+char_dist*2, Ystart, ':', Font, WHITE, BLACK);
-    if (m < 10) {
-        Paint_DrawNum_COMPACT(Xstart+char_dist*3, Ystart, 0, Font, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(Xstart+char_dist*4, Ystart, m, Font, WHITE, BLACK); 
-    } else {
-        Paint_DrawNum_COMPACT(Xstart+char_dist*3, Ystart, m, Font, WHITE, BLACK);
-    }
-}
-
-#define PERCENT_NUMBER_OFFSET   160
-#define PIXEL_BETWEEN_CHARS     12
-static void show_progress_hm_time_with_power_down(uint16_t cur_mins, uint16_t set_mins)
-{
-    uint16_t percent, per;
-
-    spi_and_gpio_init();
-    EPD_POWER_ON();
-    DEV_Delay_ms(100);
-
-    percent = (uint16_t)((float)cur_mins*100/set_mins);
-
-    if(EPD_Init(lut_full_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-//    NRF_LOG_RAW_INFO("now full update!\r\n");
-    Paint_ClearWindows(20, 25, 280, 59, WHITE);
-
-    show_time(75, 25, &Font24, cur_mins);
-    if (percent < 10) {
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, percent, &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*2, 25, '%', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*3, 25, ')', &Font20, WHITE, BLACK);
-        per = percent;
-    } else if (percent < 100) {
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, percent, &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*3, 25, '%', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, ')', &Font20, WHITE, BLACK);
-        per = percent;
-    } else if (percent == 100) {
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, percent, &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, '%', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*5, 25, ')', &Font20, WHITE, BLACK);
-        per = percent;
-    } else if (percent < 110) {
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, '+', &Font20, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*2, 25, percent-100, &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*3, 25, '%', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, ')', &Font20, WHITE, BLACK);
-        per = 100;
-    } else if (percent < 200) {
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET, 25, '(', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS, 25, '+', &Font20, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*2, 25, percent-100, &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*4, 25, '%', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET+PIXEL_BETWEEN_CHARS*5, 25, ')', &Font20, WHITE, BLACK);
-        per = 100;
-    } else {
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10, 25, '(', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS, 25, '+', &Font20, WHITE, BLACK);
-        Paint_DrawNum_COMPACT(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS*2, 25, percent-100, &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS*5, 25, '%', &Font20, WHITE, BLACK);
-        Paint_DrawChar(PERCENT_NUMBER_OFFSET-10+PIXEL_BETWEEN_CHARS*6, 25, ')', &Font20, WHITE, BLACK);
-        per = 100;
-    }
-    update_progressbar(per);
-    show_time(118, 98, &Font20, set_mins);
-    EPD_Display(ImageCache);
-    DEV_Delay_ms(100);
-    spi_and_gpio_uninit();
-    EPD_POWER_OFF();    
-}
-
-static void show_settings_screen(void)
-{
-    EPD_POWER_ON(); // turn on VCC
-    if(EPD_Init(lut_full_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-    EPD_Clear();
-    DEV_Delay_ms(100);
-    show_time(105, 25, &Font24, 0);
-    EPD_Display(ImageCache);
-}
-
+#define SETTING_TIMER_TIMEOUT   3000
+#define TIME_CHANGE_STEP        5
 /**@brief Function for application main entry.
  */
 int main(void)
 {
     bool erase_bonds;
-    uint16_t cur_mins = 0, set_mins = 90;
-    uint32_t cur_time = 0, last_time = 0;
+    uint16_t cur_mins = 0, set_mins = 0;
+    uint32_t start_time = 0, elapsed_time = 0, cur_time = 0, last_time = 0;
     int key_value, rotary_state;
 
     // Initialize.
     log_init();
     timers_init();
     // buttons_leds_init(&erase_bonds);
+#if defined(ENABLE_DEBUG_PIN)
+    debug_pin_init();
+#endif
     rotary_encoder_init();
     spi_and_gpio_init();
     time_timer_init();
+    fsm_timer_init();
+    trigger_loop_timer_init();
+    setting_timer_init();
+    epd_display_init();
 
     power_management_init();
     ble_stack_init();
@@ -1091,42 +874,128 @@ int main(void)
     application_timers_start();
     advertising_start(erase_bonds);
 
-    if(EPD_Init(lut_full_update) != 0) {
-        NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
-    }
-    EPD_Clear();
-    DEV_Delay_ms(400);
-    
-    Paint_NewImage(ImageCache, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-    Paint_SelectImage(ImageCache);
-    Paint_Clear(WHITE);
-
-    show_time(105, 60, &Font24, 0);
-    EPD_Display(ImageCache);
+    while (show_progress_hm_time_with_power_down(90, 90) != fsm_rt_cpl);
     // Enter main loop.
     for (;;)
     {
         idle_state_handle();
 
+#if defined(ENABLE_DEBUG_PIN)
+//        DEBUG_POINT_A(); // to see the system duty cycle
+#endif
         key_value = get_key_value();
         rotary_state = get_rotary_encoder_state();
         if (key_value != KEY_UNPRESSED) {
             NRF_LOG_RAW_INFO("key: %d\r\n", key_value);
         }
-
-        //if (rotary_state != ROTARY_STATE_INVALID) 
-        
-        cur_time = get_time();
-        if (((cur_time+1) % 10) == 0 && (cur_time != last_time))
-        {
-            NRF_LOG_RAW_INFO("time: %d\r\n", get_time());
-            cur_mins += 5;
-
-            show_progress_hm_time_with_power_down(cur_mins, set_mins);
-            //NRF_LOG_RAW_INFO("progress: %d\r\n", progress);
-            
-            last_time = cur_time;
+        if (rotary_state != ROTARY_STATE_INVALID) {
+            NRF_LOG_RAW_INFO("rotary: %d\r\n", rotary_state);
         }
+
+        static enum {
+            MAIN_APP_START = 0,
+            MAIN_APP_WAIT_LONG_PRESS,
+            MAIN_APP_RESET_AND_SET_TIME,
+            MAIN_APP_WAIT_SHORT_PRESS,
+            MAIN_APP_SHOW_EXAMPLE,
+            MAIN_APP_CHECK_TIME,
+            MAIN_APP_UPDATE_PROGRESS
+        } s_tState = MAIN_APP_START;
+
+        switch (s_tState) {
+            case MAIN_APP_START:
+                s_tState = MAIN_APP_WAIT_LONG_PRESS;
+                // break;
+            case MAIN_APP_WAIT_LONG_PRESS:
+                if (key_value == KEY_PRESSED_LONG) {
+                    trigger_loop_timer(); // for low power wakeup
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_RESET_AND_SET_TIME\r\n");
+                    s_tState = MAIN_APP_RESET_AND_SET_TIME;
+                }
+                break;
+            case MAIN_APP_RESET_AND_SET_TIME:
+                if (show_settings_screen() == fsm_rt_cpl) {
+                    setting_timer_restart(APP_TIMER_TICKS(SETTING_TIMER_TIMEOUT));
+                    trigger_loop_timer(); // for low power wakeup
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_WAIT_SHORT_PRESS\r\n");
+                    s_tState = MAIN_APP_WAIT_SHORT_PRESS;
+                }
+                break;
+            case MAIN_APP_WAIT_SHORT_PRESS:
+                if (setting_timer_fired()) {
+                    trigger_loop_timer(); // for low power wakeup
+                    s_tState = MAIN_APP_SHOW_EXAMPLE;
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_SHOW_EXAMPLE\r\n");
+                    break;
+                }
+                if (key_value == KEY_PRESSED_SHORT) {
+                    setting_timer_stop();
+                    if (set_mins == 0) {
+                        trigger_loop_timer(); // for low power wakeup
+                        s_tState = MAIN_APP_SHOW_EXAMPLE;
+                        NRF_LOG_RAW_INFO("jump to MAIN_APP_SHOW_EXAMPLE\r\n");
+                    } else {
+                        start_time = get_time();
+                        elapsed_time = 0;
+                        last_time = start_time;
+                        s_tState = MAIN_APP_UPDATE_PROGRESS;
+                        NRF_LOG_RAW_INFO("jump to MAIN_APP_UPDATE_PROGRESS\r\n");
+                    }
+                }
+                if (rotary_state == ROTARY_STATE_CLOCKWISE) {
+                    set_mins += TIME_CHANGE_STEP;
+                    update_settings_screen(set_mins);
+                    setting_timer_restart(APP_TIMER_TICKS(SETTING_TIMER_TIMEOUT));
+                } else if (rotary_state == ROTARY_STATE_COUNTERCLOCKWISE) {
+                    if (set_mins > 0 && (set_mins - TIME_CHANGE_STEP) >= 0) {
+                        set_mins -= TIME_CHANGE_STEP;
+                    } else if (set_mins > 0) {
+                        set_mins = 0;
+                    }
+                    update_settings_screen(set_mins);
+                    setting_timer_restart(APP_TIMER_TICKS(SETTING_TIMER_TIMEOUT));
+                }
+                break;
+            case MAIN_APP_SHOW_EXAMPLE:
+                if (show_progress_hm_time_with_power_down(90, 90) == fsm_rt_cpl) {
+                    trigger_loop_timer(); // for low power wakeup
+                    s_tState = MAIN_APP_START;
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_START\r\n");
+                }
+                break;
+            case MAIN_APP_CHECK_TIME:
+                cur_time = get_time();
+                if (cur_time - last_time >= 60) {
+                    last_time = cur_time;
+                    elapsed_time = cur_time - start_time;
+                    trigger_loop_timer(); // for low power wakeup
+                    s_tState = MAIN_APP_UPDATE_PROGRESS;
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_UPDATE_PROGRESS\r\n");
+                }
+                if (key_value == KEY_PRESSED_LONG) {
+                    trigger_loop_timer(); // for low power wakeup
+                    s_tState = MAIN_APP_RESET_AND_SET_TIME;
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_RESET_AND_SET_TIME\r\n");
+                }
+                if (key_value == KEY_PRESSED_SHORT) {
+                    trigger_loop_timer(); // for low power wakeup
+                    s_tState = MAIN_APP_START;
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_START\r\n");
+                }
+                break;
+            case MAIN_APP_UPDATE_PROGRESS:
+                if (show_progress_hm_time_with_power_down(elapsed_time/60, set_mins) == fsm_rt_cpl) {
+                    trigger_loop_timer(); // for low power wakeup
+                    s_tState = MAIN_APP_CHECK_TIME;
+                    NRF_LOG_RAW_INFO("jump to MAIN_APP_CHECK_TIME\r\n");
+                }
+                break;
+            default: break;
+        }
+
+#if defined(ENABLE_DEBUG_PIN)
+//        DEBUG_POINT_B(); // to see the system duty cycle
+#endif
     }
 }
 

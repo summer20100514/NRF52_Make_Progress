@@ -32,6 +32,7 @@ void rotary_encoder_pin_key_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarit
     } else if (key_value != KEY_PRESSED_LONG) {
         app_timer_stop(m_key_pressed_timer_id);
         diff = app_timer_cnt_get() - timer_cnt;
+        NRF_LOG_RAW_INFO("diff %d\r\n", diff);
         if (diff >= APP_TIMER_TICKS(KEY_PRESS_SHORT_TIMEOUT) &&
               diff < APP_TIMER_TICKS(KEY_PRESS_LONG_TIMEOUT)) {
             key_value = KEY_PRESSED_SHORT;
@@ -107,7 +108,7 @@ void rotary_encoder_init(void)
     }
 
     nrf_drv_gpiote_in_config_t in_config_key = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
-    in_config_key.pull = NRF_GPIO_PIN_NOPULL;
+    in_config_key.pull = NRF_GPIO_PIN_PULLUP;
     err_code = nrf_drv_gpiote_in_init(ROTARY_ENCODER_PIN_KEY, &in_config_key, rotary_encoder_pin_key_handler);
     APP_ERROR_CHECK(err_code);
     nrf_drv_gpiote_in_event_enable(ROTARY_ENCODER_PIN_KEY, true);

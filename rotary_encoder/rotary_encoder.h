@@ -19,9 +19,9 @@ enum {
 #define ROTARY_ENCODER_PIN_B      3
 #define ROTARY_ENCODER_PIN_KEY    4
 
-#define PULSE_CNT_THRESHOLD       2
+#define PULSE_CNT_THRESHOLD       3
 
-#define KEY_PRESS_SHORT_TIMEOUT   60
+#define KEY_PRESS_SHORT_TIMEOUT   10
 #define KEY_PRESS_LONG_TIMEOUT    600
 
 void rotary_encoder_init(void);
