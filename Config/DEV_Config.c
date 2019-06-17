@@ -86,6 +86,28 @@ void spi_and_gpio_uninit(void)
     nrf_gpio_cfg_default(EPD_MOSI_PIN);
     nrf_gpio_cfg_default(EPD_CLK_PIN);
 
+/**
+ * [89] GPIOTE: Static 400 ¦ÌA current while using GPIOTE
+ * This anomaly applies to IC Rev. Rev 2, build codes QFAA-Ex0, CIAA-Ex0, QFAB-Ex0.
+ * It was inherited from the previous IC revision Rev 1.
+ *
+ * Symptoms
+ * Static current consumption between 400 ¦ÌA and 450 ¦ÌA 
+ * when using SPIM or TWIM in combination with GPIOTE.
+ *
+ * Conditions
+ * GPIOTE is configured in event mode
+ * TWIM/SPIM utilizes EasyDMA
+ *
+ * Workaround
+ * Turn the TWIM/SPIM off and back on after it has been disabled. 
+ * To do so, write 0 followed by 1 to the POWER register (address 0xFFC) 
+ * of the TWIM/SPIM that must be disabled
+ */
+    *(volatile uint32_t *)0x40003FFC = 0;
+    *(volatile uint32_t *)0x40003FFC;
+    *(volatile uint32_t *)0x40003FFC = 1;    
+
     spi_initialized = false;
 }
 
