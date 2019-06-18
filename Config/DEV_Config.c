@@ -118,10 +118,14 @@ void DEV_SPI_WriteByte(UBYTE value)
     spi_xfer_done = false;
 
     APP_ERROR_CHECK(nrf_drv_spi_transfer(&spi, &value, 1, NULL, 0));
-    while (!spi_xfer_done)
+
+    while (!spi_xfer_done);
+
+/*    while (!spi_xfer_done)
     {
         __WFE();
     }
+    */
 }
 
 

@@ -873,6 +873,8 @@ int main(void)
     NRF_LOG_INFO("compiled at %s %s", __DATE__, __TIME__);
     application_timers_start();
     advertising_start(erase_bonds);
+    // enable dcdc to save power
+    sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
 
     while (show_progress_hm_time_with_power_down(90, 90) != fsm_rt_cpl);
     // Enter main loop.

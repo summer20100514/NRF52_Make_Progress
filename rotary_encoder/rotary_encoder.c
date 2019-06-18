@@ -107,13 +107,13 @@ void rotary_encoder_init(void)
         APP_ERROR_CHECK(err_code);
     }
 
-    nrf_drv_gpiote_in_config_t in_config_key = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
+    nrf_drv_gpiote_in_config_t in_config_key = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
     in_config_key.pull = NRF_GPIO_PIN_PULLUP;
     err_code = nrf_drv_gpiote_in_init(ROTARY_ENCODER_PIN_KEY, &in_config_key, rotary_encoder_pin_key_handler);
     APP_ERROR_CHECK(err_code);
     nrf_drv_gpiote_in_event_enable(ROTARY_ENCODER_PIN_KEY, true);
 
-    nrf_drv_gpiote_in_config_t in_config_a = GPIOTE_CONFIG_IN_SENSE_HITOLO(true);
+    nrf_drv_gpiote_in_config_t in_config_a = GPIOTE_CONFIG_IN_SENSE_HITOLO(false);
     in_config_a.pull = NRF_GPIO_PIN_NOPULL;
     err_code = nrf_drv_gpiote_in_init(ROTARY_ENCODER_PIN_A, &in_config_a, rotary_encoder_pin_a_handler);
     APP_ERROR_CHECK(err_code);
