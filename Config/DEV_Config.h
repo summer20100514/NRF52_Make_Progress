@@ -66,15 +66,15 @@
 /**
  * e-Paper GPIO
 **/
-//#define EPD_RST_PIN         //RST_GPIO_Port, RST_Pin
-#define EPD_DC_PIN      25    //DC_GPIO_Port, DC_Pin
-#define EPD_CS_PIN      27    //SPI_CS_GPIO_Port, SPI_CS_Pin
-#define EPD_BUSY_PIN    29    //BUSY_GPIO_Port, BUSY_Pin
+#define EPD_RST_PIN     30    //RST_GPIO_Port, RST_Pin
+#define EPD_DC_PIN      29    //DC_GPIO_Port, DC_Pin
+#define EPD_CS_PIN      28    //SPI_CS_GPIO_Port, SPI_CS_Pin
+#define EPD_BUSY_PIN    31    //BUSY_GPIO_Port, BUSY_Pin
 
 #define EPD_MOSI_PIN    26
-#define EPD_CLK_PIN     28
+#define EPD_CLK_PIN     27
 
-#define EPD_POWER_PIN   30
+#define EPD_POWER_PIN   25
 
 /**
  * GPIO read and write
@@ -82,8 +82,8 @@
 #define DEV_Digital_Write(_pin, _value)  nrf_gpio_pin_write(_pin, _value) //HAL_GPIO_WritePin(_pin, _value == 0? GPIO_PIN_RESET:GPIO_PIN_SET)
 #define DEV_Digital_Read(_pin)  nrf_gpio_pin_read(_pin) //HAL_GPIO_ReadPin(_pin)
 
-#define EPD_POWER_ON()    nrf_gpio_pin_write(EPD_POWER_PIN, 0)
-#define EPD_POWER_OFF()   nrf_gpio_pin_write(EPD_POWER_PIN, 1)
+#define EPD_POWER_ON()    nrf_gpio_pin_write(EPD_POWER_PIN, 1)
+#define EPD_POWER_OFF()   nrf_gpio_pin_write(EPD_POWER_PIN, 0)
 
 /**
  * delay x ms

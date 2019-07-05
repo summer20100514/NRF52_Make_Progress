@@ -468,6 +468,7 @@ void update_settings_screen(uint16_t mins)
 
 void epd_display_init(void)
 {
+    EPD_POWER_ON();
     if(EPD_Init(lut_full_update) != 0) {
         NRF_LOG_RAW_INFO("e-Paper init failed\r\n");
     }

@@ -108,7 +108,7 @@ void rotary_encoder_init(void)
     }
 
     nrf_drv_gpiote_in_config_t in_config_key = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false);
-    in_config_key.pull = NRF_GPIO_PIN_PULLUP;
+    in_config_key.pull = NRF_GPIO_PIN_NOPULL;
     err_code = nrf_drv_gpiote_in_init(ROTARY_ENCODER_PIN_KEY, &in_config_key, rotary_encoder_pin_key_handler);
     APP_ERROR_CHECK(err_code);
     nrf_drv_gpiote_in_event_enable(ROTARY_ENCODER_PIN_KEY, true);

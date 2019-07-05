@@ -15,9 +15,9 @@ enum {
     KEY_PRESSED_LONG
 };
 
-#define ROTARY_ENCODER_PIN_A      2
-#define ROTARY_ENCODER_PIN_B      3
-#define ROTARY_ENCODER_PIN_KEY    4
+#define ROTARY_ENCODER_PIN_A      24
+#define ROTARY_ENCODER_PIN_B      22
+#define ROTARY_ENCODER_PIN_KEY    23
 
 #define PULSE_CNT_THRESHOLD       3
 

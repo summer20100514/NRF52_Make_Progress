@@ -63,6 +63,8 @@ void spi_and_gpio_init(void)
     //nrf_gpio_cfg_input(EPD_BUSY_PIN, NRF_GPIO_PIN_PULLUP);
     nrf_gpio_cfg_output(EPD_DC_PIN);
     nrf_gpio_cfg_output(EPD_POWER_PIN);
+    nrf_gpio_cfg_output(EPD_RST_PIN);
+    DEV_Digital_Write(EPD_RST_PIN, 1); // keep rst pin high
 
     nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
     spi_config.ss_pin   = EPD_CS_PIN;
@@ -85,6 +87,7 @@ void spi_and_gpio_uninit(void)
     nrf_gpio_cfg_default(EPD_BUSY_PIN);
     nrf_gpio_cfg_default(EPD_MOSI_PIN);
     nrf_gpio_cfg_default(EPD_CLK_PIN);
+    nrf_gpio_cfg_default(EPD_RST_PIN);
 
 /**
  * [89] GPIOTE: Static 400 ¦ÌA current while using GPIOTE
