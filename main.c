@@ -944,7 +944,7 @@ int main(void)
                         NRF_LOG_RAW_INFO("jump to MAIN_APP_UPDATE_PROGRESS\r\n");
                     }
                 }
-                if (rotary_state == ROTARY_STATE_CLOCKWISE) {
+                if (rotary_state == ROTARY_STATE_COUNTERCLOCKWISE) {
                     NRF_LOG_RAW_INFO("set_mins += TIME_CHANGE_STEP\r\n");
                     set_mins += TIME_CHANGE_STEP;
                     if (set_mins > 60) {
@@ -952,7 +952,7 @@ int main(void)
                     }
                     update_settings_screen(set_mins);
                     setting_timer_restart(APP_TIMER_TICKS(SETTING_TIMER_TIMEOUT));
-                } else if (rotary_state == ROTARY_STATE_COUNTERCLOCKWISE) {
+                } else if (rotary_state == ROTARY_STATE_CLOCKWISE) {
                     if (set_mins > 0 && (set_mins - TIME_CHANGE_STEP) >= 0) {
                         NRF_LOG_RAW_INFO("set_mins -= TIME_CHANGE_STEP\r\n");
                         set_mins -= TIME_CHANGE_STEP;
