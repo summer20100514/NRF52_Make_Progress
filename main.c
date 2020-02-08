@@ -815,7 +815,12 @@ static void setting_timer_init(void)
 
 static void setting_timer_restart(uint32_t timeout_ticks)
 {
+    if (setting_timer_expired)
+    {
+        NRF_LOG_RAW_INFO("### Bug! Triggerred before restart timer!\r\n");
+    }
     app_timer_stop(m_setting_timer_id);
+    (void)setting_timer_fired(); // should clear fired flag
     app_timer_start(m_setting_timer_id, timeout_ticks, NULL);
 }
 
